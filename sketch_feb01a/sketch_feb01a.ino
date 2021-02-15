@@ -19,14 +19,61 @@ void setup() {
   delay(1000);
   Serial.println("connecting...");
 
+  // от старшего к младшему: a[0] - старший, a[N] - младший
+  uint8_t a[] = {104, 253, 254};
 
+  //   {01101000, 11111111, 11111111}
+  //a0  01101000  00000000  00000000 
+  //a1  00000000  11111101  00000000
+  //a2  00000000  00000000  11111110
+
+  //res 01101000  11111101  11111110
+
+  Serial.println(byte_array_to_decimal(a));
+} 
+
+
+uint32_t byte_array_to_decimal(byte* arr) {
+    uint32_t result = 0;
+
+    // 1
+    // 00000000 00000000 00000000 00000000
+                               // 01101000  
+                      // 01101000 00000000
+
+    // 2
+    // 00000000 00000000 01101000 00000000
+    //                            11111111
+    // 00000000 01101000 11111111 00000000
+
+    int s = sizeof(arr);
+
+    Serial.print("size: ");
+    Serial.println(s);
+
+    for (int i = 0; i < s; i++) {
+      result = result | arr[i];
+      result = result << 8;
+      Serial.print(i);
+      Serial.print(": ");
+      Serial.println(result);
+    }
+
+    result = result | arr[s];
+
+    Serial.println(result);
+
+    return result;
 }
+
 
 void loop() {
   // здесь считывание с шины событий rfid (id устройства и непосредственно rfid метка)
+
+  char a[3] = {0x15, 0x36, 0x37};
   
   // отправка события на сервер
-  send_event(((++count) & 255), "MSG");
+  send_event(((++count) & 255), a);
 
   String response;
 
@@ -59,9 +106,15 @@ void loop() {
  * функция для посылки POST запроса на сервер для сверки метки 
  * 
  */
-void send_event(int id, char* rfid) {
-  char body[30];
-  sprintf(body, "\{\"device_id\":%d,\"rfid\":\"%s\"\}", id, rfid);
+void send_event(uint8_t id, uint32_t rfid) {
+  char body[38];
+  sprintf(body, "\{\"device_id\":%d,\"rfid\":%d\}", id, rfid);
+
+  Serial.print("rfid: ");
+  Serial.println(rfid);
+
+  Serial.print("body: ");
+  Serial.println(body);
 
   char content_len[17];
   sprintf(content_len, "Content-Length:%d", strlen(body));

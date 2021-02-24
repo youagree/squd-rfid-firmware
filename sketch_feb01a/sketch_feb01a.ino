@@ -106,7 +106,7 @@ void loop() {
  * функция для посылки POST запроса на сервер для сверки метки 
  * 
  */
-void send_event(uint8_t id, uint32_t rfid) {
+void send_event(uint8_t id, uint8_t rfid) {
   char body[38];
   sprintf(body, "\{\"device_id\":%d,\"rfid\":%d\}", id, rfid);
 

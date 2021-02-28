@@ -12,31 +12,28 @@ EthernetClient client;
 void setup() {
   Ethernet.begin(mac, ip);
   Serial.begin(9600);
-  Serial.println(Ethernet.localIP());
   delay(1000);
-  delay(1000);
-  Serial.println("connecting...");
-
-  // от старшего к младшему: a[0] - старший, a[N] - младший
-  //  uint8_t a[] = {104, 253, 254};
-
-  //   {01101000, 11111111, 11111111}
-  //a0  01101000  00000000  00000000 
-  //a1  00000000  11111101  00000000
-  //a2  00000000  00000000  11111110
-
-  //res 01101000  11111101  11111110
-
-  //Serial.println(byte_array_to_decimal(a));
 } 
 
 
-uint32_t byte_array_to_decimal(byte* arr) {
-    uint32_t result = 0;
+unsigned long byte_array_to_decimal(uint8_t* arr) {
+    unsigned long result = 0;
+
+    // от старшего к младшему: a[0] - старший, a[N] - младший
+    //  uint8_t a[] = {104, 253, 254};
+  
+    //   {01101000, 11111111, 11111111}
+    //a0  01101000  00000000  00000000 
+    //a1  00000000  11111101  00000000
+    //a2  00000000  00000000  11111110
+  
+    //res 01101000  11111101  11111110
+  
+    //Serial.println(byte_array_to_decimal(a));
 
     // 1
     // 00000000 00000000 00000000 00000000
-                               // 01101000  
+                               // 01101000
                       // 01101000 00000000
 
     // 2
@@ -44,17 +41,12 @@ uint32_t byte_array_to_decimal(byte* arr) {
     //                            11111111
     // 00000000 01101000 11111111 00000000
 
-    int s = sizeof(arr);
-
-    Serial.print("size: ");
-    Serial.println(s);
-
-    for (int i = 0; i < s; i++) {
+    for (int i = 0; i < 2; i++) {
       result = result | arr[i];
       result = result << 8;
     }
 
-    result = result | arr[s];
+    result = result | arr[2];
 
     return result;
 }
@@ -67,14 +59,20 @@ void loop() {
   uint8_t rfid[3];
 
   if (Serial.available() > 0) {
-    if (Serial.read() == ':') {
-      address = Serial.read();
+    char head = Serial.read();
+
+    if (head == ':') {
+      delay(10);
+      int addr_tmp = Serial.read();
+      address = (uint8_t) addr_tmp;
       for (int i = 0; i < 3; i++) {
-        rfid[i] = Serial.read();
+        delay(10);
+        int byte_tmp = Serial.read();
+        rfid[i] = (uint8_t) byte_tmp;
       }
 
       // отправка события на сервер
-      send_event(address, rfid);
+      send_event(address, byte_array_to_decimal(rfid));
 
       String response;
     
@@ -88,15 +86,12 @@ void loop() {
       // последняя строка ответа в положительносм сценарии - это id шлагбаума который нужно открыть
       if (response.charAt(9) == '2') {
           while(client.available()) {
-              response = client.readStringUntil('\r');
+            delay(5);
+            response = client.readStringUntil('\r');
           }
     
           // send signal to шлагбаум
-          Serial.println(response);
-      }
-      else {
-        Serial.println("not 200");
-        Serial.println(response);
+          Serial.print(response);
       }
     }
   }
@@ -106,22 +101,15 @@ void loop() {
  * функция для посылки POST запроса на сервер для сверки метки 
  * 
  */
-void send_event(uint8_t id, uint8_t rfid) {
+void send_event(uint8_t id, unsigned long rfid) {
   char body[38];
-  sprintf(body, "\{\"device_id\":%d,\"rfid\":%d\}", id, rfid);
-
-  Serial.print("rfid: ");
-  Serial.println(rfid);
-
-  Serial.print("body: ");
-  Serial.println(body);
+  sprintf(body, "\{\"device_id\":%d,\"rfid\":%lu\}", id, rfid);
 
   char content_len[17];
   sprintf(content_len, "Content-Length:%d", strlen(body));
 
   if (client.connect(server, 8080)) {
-    Serial.println("Sending to Server: ");
-    client.println("POST /v1/events HTTP/1.1");
+    client.println("POST /v1/event HTTP/1.1");
     client.println("Host: 10.189.113.254:8080");
     client.println("Content-Type: application/json");
     client.println("Connection: close");
@@ -132,6 +120,6 @@ void send_event(uint8_t id, uint8_t rfid) {
   }
 
   else {
-    Serial.println("Cannot connect to Server");
+    // todo: придумать световую индикацию, что нет коннекта к серверу
   }
 }

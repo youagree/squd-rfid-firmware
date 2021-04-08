@@ -76,7 +76,7 @@ void loop() {
 
       String response;
     
-      delay(25);
+      delay(500);
       // вычитывание кода ответа (1 строка ответа содержит http код ответа)
       if (client.available()) {
         response = client.readStringUntil('\r');

@@ -1,1 +1,1 @@
-# squd-arduino-firmware
+# squd-qr-firmware
